@@ -4,10 +4,10 @@ SRC_DIR:=src
 BIN_DIR:=bin
 INCLUDE_DIR:=include
 
-all: setup shell
+all: setup manager
 
-shell: src/helpers.c src/shell.c
-	$(CC) -I $(INCLUDE_DIR) $(CFLAGS) $(SRC_DIR)/helpers.c $(SRC_DIR)/shell.c -o $(BIN_DIR)/shell.exe
+manager: src/helpers.c src/manager.c
+	$(CC) -I $(INCLUDE_DIR) $(CFLAGS) $(SRC_DIR)/helpers.c $(SRC_DIR)/manager.c -o $(BIN_DIR)/manager.exe
 
 setup:
 	-mkdir $(BIN_DIR)
