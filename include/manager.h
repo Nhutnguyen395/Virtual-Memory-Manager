@@ -9,7 +9,7 @@
 
 #define PAGE_SIZE 512
 #define FRAME_SIZE 1024
-#define PHYSICAL_MEMORY_SIZE
+#define PHYSICAL_MEMORY_SIZE (PAGE_SIZE * FRAME_SIZE)
 
 void init(const char* init_file);
 int translate_address(uint32_t va);

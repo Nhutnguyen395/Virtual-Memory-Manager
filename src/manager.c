@@ -84,8 +84,49 @@ void init(const char* init_file){
 }
 
 
-int translate_address(uint32_t va);
-void process_addresses(const char* va_file, const char* output_file);
+int translate_address(uint32_t va){
+    int s = get_segment(va);
+    int p = get_page(va);
+    int w = get_offset(va);
+    int pw = get_page_offset(va);
+
+    if (physical_memory[2 * s] == 0 || pw >= physical_memory[2 * s]){
+        return -1;
+    }
+
+    if (physical_memory[2 * s + 1] < 0){
+        int page_table_block = abs(physical_memory[2 * s + 1]);
+        int free_frame = allocate_free_frame();
+        read_block(page_table_block, free_frame * PAGE_SIZE);
+        physical_memory[2 * s + 1] = free_frame;
+    }
+
+    int page_table_entry = physical_memory[physical_memory[2 * s + 1] * PAGE_SIZE + p];
+    if (page_table_entry < 0){
+        int page_block = abs(page_table_entry);
+        int free_frame = allocate_free_frame();
+        read_block(page_block, free_frame * PAGE_SIZE);
+        physical_memory[physical_memory[2 * s + 1] * PAGE_SIZE + p] = free_frame;
+    }
+    return page_table_entry * PAGE_SIZE + w;
+}
+
+void process_addresses(const char* va_file, const char* output_file){
+    FILE* input = fopen(va_file, "r");
+    FILE* output = fopen(output_file, "w");
+    if (input == NULL || output == NULL){
+        exit(1);
+    }
+    uint32_t va;
+    int pa;
+    while (fscanf(input, "%u", &va) != EOF){
+        pa = translate_address(va);
+        fprintf(output, "%d\n", pa);
+    }
+    fclose(input);
+    fclose(output);
+}
+
 
 int allocate_free_frame(){
     if (free_frames_count <= 0){
@@ -102,5 +143,7 @@ void read_block(int block, int frame_start){
 }
 
 int main(int argc, char* argv[]){
-    return 1;
+    init(argv[1]);
+    process_addresses(argv[2], argv[3]);
+    return 0;
 }
