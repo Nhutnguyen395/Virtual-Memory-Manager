@@ -22,5 +22,5 @@ int get_offset(uint32_t va){
 // extract page offset (pw)
 int get_page_offset(uint32_t va){
     // keep lowest 18 bits
-    return va& 0x3FFFF;
+    return va & 0x3FFFF;
 }

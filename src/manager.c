@@ -8,6 +8,9 @@ int free_frames_count;
 
 void init(const char* init_file){
     FILE* file = fopen(init_file, "r");
+    if (file == NULL){
+        exit(1);
+    }
     
     // initialize all physical memory to 0
     int i;
@@ -34,22 +37,30 @@ void init(const char* init_file){
         exit(1);
     }
 
-    char* token = strtok(line, "\t\n");
+    char* token = strtok(line, " \t\n");
     while (token != NULL){
         int segment = atoi(token);
 
         token = strtok(NULL, " \t\n");
         if (token == NULL) break;
-
         int size = atoi(token);
+
         token = strtok(NULL, " \t\n");
         if (token == NULL) break;
-
         int frame_or_block = atoi(token);
 
         physical_memory[2 * segment] = size; // size of segment
         physical_memory[2 * segment + 1] = frame_or_block; // frame or disk block
 
+        if (frame_or_block > 1){
+            for (i = 0; i < free_frames_count; i++){
+                if (free_frames[i] == frame_or_block){
+                    free_frames[i] = free_frames[free_frames_count - 1];
+                    free_frames_count--;
+                    break;
+                }
+            }
+        }
         token = strtok(NULL, " \t\n");
     }
 
@@ -58,7 +69,7 @@ void init(const char* init_file){
         return;
     }
 
-    token = strtok(line, "\t\n");
+    token = strtok(line, " \t\n");
     while (token != NULL){
         int segment = atoi(token);
 
@@ -73,16 +84,25 @@ void init(const char* init_file){
         int page_table_frame_or_block = physical_memory[2 * segment + 1];
 
         if (page_table_frame_or_block >= 0){
-            physical_memory[page_table_frame_or_block * PAGE_SIZE + page];
+            physical_memory[page_table_frame_or_block * PAGE_SIZE + page] = frame_or_block;
         } else {
             disk[abs(page_table_frame_or_block)][page] = frame_or_block;
+        }
+
+        if (frame_or_block > 1) {
+            for (i = 0; i < free_frames_count; i++) {
+                if (free_frames[i] == frame_or_block) {
+                    free_frames[i] = free_frames[free_frames_count - 1];
+                    free_frames_count--;
+                    break;
+                }
+            }
         }
 
         token = strtok(NULL, " \t\n");
     }
     fclose(file);
 }
-
 
 int translate_address(uint32_t va){
     int s = get_segment(va);
@@ -108,7 +128,7 @@ int translate_address(uint32_t va){
         read_block(page_block, free_frame * PAGE_SIZE);
         physical_memory[physical_memory[2 * s + 1] * PAGE_SIZE + p] = free_frame;
     }
-    return page_table_entry * PAGE_SIZE + w;
+    return physical_memory[physical_memory[2 * s + 1] * PAGE_SIZE + p] * PAGE_SIZE + w;
 }
 
 void process_addresses(const char* va_file, const char* output_file){
@@ -127,15 +147,25 @@ void process_addresses(const char* va_file, const char* output_file){
     fclose(output);
 }
 
-
 int allocate_free_frame(){
     if (free_frames_count <= 0){
         exit(1);
     }
-    return free_frames[--free_frames_count];
+    
+    int frame = free_frames[0];
+    int i;
+    for(i = 0; i < free_frames_count - 1; i++){
+        free_frames[i] = free_frames[i + 1];
+    }
+    free_frames_count--;
+    return frame;
 }
 
 void read_block(int block, int frame_start){
+    if (block < 0 || block >= FRAME_SIZE) {
+        exit(1);
+    }
+
     int i;
     for (i = 0; i < PAGE_SIZE; i++){
         physical_memory[frame_start + i] = disk[block][i];
