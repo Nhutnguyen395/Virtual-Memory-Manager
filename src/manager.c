@@ -137,11 +137,16 @@ void process_addresses(const char* va_file, const char* output_file){
     if (input == NULL || output == NULL){
         exit(1);
     }
+
     uint32_t va;
-    int pa;
+    int is_first_flag = 1;
     while (fscanf(input, "%u", &va) != EOF){
-        pa = translate_address(va);
-        fprintf(output, "%d\n", pa);
+        int pa = translate_address(va);
+        if (is_first_flag){
+            fprintf(output, "%d ", pa);
+        } else {
+            fprintf(output, "%d", pa);
+        }
     }
     fclose(input);
     fclose(output);
